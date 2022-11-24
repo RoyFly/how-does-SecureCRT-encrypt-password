@@ -1,0 +1,1 @@
+https://github.com/Orainge/shell-password-utils
