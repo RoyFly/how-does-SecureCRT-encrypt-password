@@ -1,95 +1,100 @@
 package finalShell;
 
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.ArrayUtil;
 import com.alibaba.fastjson.JSONObject;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.Random;
 
 public class FinalShellDecodePass {
 
     //todo DIR_NAME改为你的目录位置
-    public static final String DIR_NAME = "E:\\GreenSoft\\finalshell\\conn\\2cga3t1qpf57um4v\\";
+    public static String DIR_NAME = "E:\\GreenSoft\\finalshell\\conn\\";
 
-    public static void main(String[] args) throws Exception {
-        ArrayList<String> pathFiles = getPathFiles(DIR_NAME);
-        ArrayList<String> passwords = new ArrayList<>();
-        for (String pathFile : pathFiles) {
-            String jsonStr = readJsonFile(pathFile);
-            JSONObject jsonObject = JSONObject.parseObject(jsonStr);
-            String password = "";
-            try {
-                password = decodePass(jsonObject.getString("password"));
-            } catch (Exception ignored) {
-                password = "密码解析错误";
+    /**
+     * FinalShell解析密码入口文件
+     *
+     * @param args
+     */
+    public static void main(String[] args) {
+        DIR_NAME = (ArrayUtil.isNotEmpty(args)) ? args[0] : DIR_NAME;
+        ArrayList<ConnPath> pathFiles = getConnPathSubItems(DIR_NAME);
+        printPassword(pathFiles);
+    }
+
+    /**
+     * 打印密码
+     *
+     * @param pathFiles
+     */
+    public static void printPassword(ArrayList<ConnPath> pathFiles) {
+        for (ConnPath connPath : pathFiles) {
+            if (connPath.isFile()) {
+                //文件
+                String fileText = readFileText(connPath.getFullName());
+                JSONObject jsonObject = JSONObject.parseObject(fileText);
+                String password = "";
+                try {
+                    password = decodePass(jsonObject.getString("password"));
+                } catch (Exception ignored) {
+                    password = "密码解析错误";
+                }
+                String host = jsonObject.getString("host");
+                System.out.println(host + ": " + password);
+            } else {
+                //文件夹
+                ArrayList<ConnPath> innerPathFiles = getConnPathSubItems(connPath.getFullName());
+//                System.out.println("begin...");
+                printPassword(innerPathFiles);
+//                System.out.println("end...");
             }
-            String host = jsonObject.getString("host");
-            passwords.add(host + ": " + password);
-        }
-        Collections.sort(passwords);
-        for (String p : passwords) {
-            System.out.println(p);
         }
     }
 
     /**
-     * 读取文件目录下的所有json文件
+     * 读取文件夹下所有直接子文件夹及文件
      *
      * @param dirname 目录
      * @return 文件列表
      */
-    public static ArrayList<String> getPathFiles(String dirname) {
+    public static ArrayList<ConnPath> getConnPathSubItems(String dirname) {
         File dir = new File(dirname);
         File[] files = dir.listFiles();
-        ArrayList<String> file_names = new ArrayList<String>();
+        ArrayList<ConnPath> connPathArrayList = new ArrayList<>();
         assert files != null;
+        ConnPath connPath;
         for (File file : files) {
-            //判断是否是目录
             if (file.isDirectory()) {
-                file_names.add(dirname + file.getName());
+                //目录
+                connPath = new ConnPath(file.getAbsolutePath(), ConnPath.PathType.DIR);
+            } else {
+                //文件
+                connPath = new ConnPath(file.getAbsolutePath(), ConnPath.PathType.FILE);
             }
-            //判断是否是隐藏文件
-            if (file.isHidden()) {
-                file_names.add(dirname + file.getName());
-            }
-            if (file.isFile() && (!file.isHidden())) {  //判断是否是文件并不能是隐藏文件
-                file_names.add(dirname + file.getName());
-            }
+            connPathArrayList.add(connPath);
         }
-        return file_names;
+        return connPathArrayList;
     }
 
     //读取json文件
-    public static String readJsonFile(String fileName) {
-        String jsonStr = "";
-        try {
-            File jsonFile = new File(fileName);
-            FileReader fileReader = new FileReader(jsonFile);
-            Reader reader = new InputStreamReader(new FileInputStream(jsonFile));
-            int ch = 0;
-            StringBuilder sb = new StringBuilder();
-            while ((ch = reader.read()) != -1) {
-                sb.append((char) ch);
-            }
-            fileReader.close();
-            reader.close();
-            jsonStr = sb.toString();
-//            System.out.println(jsonStr);
-            return jsonStr;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
+    public static String readFileText(String fileName) {
+        String fileText = FileUtil.readString(new File(fileName), Charset.defaultCharset());
+        return fileText;
     }
 
     public static byte[] desDecode(byte[] data, byte[] head) throws Exception {
@@ -119,7 +124,7 @@ public class FinalShellDecodePass {
         }
     }
 
-    static byte[] ranDomKey(byte[] head) {
+    public static byte[] ranDomKey(byte[] head) {
         long ks = 3680984568597093857L / (long) (new Random((long) head[5])).nextInt(127);
         Random random = new Random(ks);
         int t = head[0];
