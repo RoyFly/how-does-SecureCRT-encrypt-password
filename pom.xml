@@ -7,10 +7,10 @@
     <groupId>com.ppfly</groupId>
     <artifactId>how-does-Terminal-encrypt-password</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+    <packaging>jar</packaging>
 
     <properties>
-		<maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <java.version>1.8</java.version>
     </properties>
@@ -44,7 +44,8 @@
     </dependencies>
     <build>
         <plugins>
-<!--            没有主清单属性-->
+            <!--解决没有主清单属性问题-->
+            <!--maven-jar-plugin的作用是配置mainClass和指定classpath-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -52,11 +53,34 @@
                 <configuration>
                     <archive>
                         <manifest>
+                            <!-- 是否在manifest文件中添加classpath。默认为false-->
                             <addClasspath>true</addClasspath>
-                            <mainClass>finalShell.FinalShellDecodePass</mainClass> <!-- 此处为主入口-->
+                            <!--指定类路径前缀，也就是依赖的jar包所在的文件夹-->
+                            <classpathPrefix>lib</classpathPrefix>
+                            <!-- 指定启动类-->
+                            <mainClass>finalShell.FinalShellDecodePass</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
